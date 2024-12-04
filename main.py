@@ -73,9 +73,40 @@ def day_02_2(input_list: list[str]) -> int:
     return sum([is_report_safe_tolerantly(to_list_of_ints(line)) for line in input_list])
 
 
+def pop_number(parent_string: str, separator: str) -> tuple[int, str]:
+    """ Return 1-3 digit number from the first part of the string before separator """
+    possible_pair = parent_string.split(separator)
+    if len(possible_pair) < 2:
+        return 0, ""
+    possible_number = possible_pair[0]
+    if 1 <= len(possible_number) <= 3 and possible_number.isdigit():
+        return int(possible_number), possible_pair[1]
+    return 0, ""
+
+
+def mul_candidate(candidate: str) -> int:
+    """ Returns X*Y from a candidate string: "X,Y)", where X and Y are each 1-3 digit numbers """
+    first_number, rest_of_candidate = pop_number(candidate, ",")
+    second_number, _ = pop_number(rest_of_candidate, ")")
+    return first_number * second_number
+
+
+def sum_mul_candidates(candidates_list: list[str]) -> int:
+    """ Candidate string: "X,Y)", where X and Y are each 1-3 digit numbers """
+    return sum([mul_candidate(candidate) for candidate in candidates_list])
+
+
+def day_03_1(input_list: list[str]) -> int:
+    """ mul(X,Y), where X and Y are each 1-3 digit numbers """
+    return sum([sum_mul_candidates(line.split("mul(")) for line in input_list])
+
+
+def day_03_2(input_list: list[str]) -> int:
+    """ mul(X,Y), where X and Y are each 1-3 digit numbers + do() and don't()"""
+    return day_03_1([do_candidate.split("don't()")[0] for do_candidate in "".join(input_list).split("do()")])
+
+
 if __name__ == '__main__':
-    lines = list_lines_from_file("input/Day02.txt")
-
-    day_function = day_02_2
-
+    lines = list_lines_from_file("input/Day03.txt")
+    day_function = day_03_2
     print(day_function(lines))

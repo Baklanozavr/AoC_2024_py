@@ -85,14 +85,12 @@ def pop_number(parent_string: str, separator: str) -> tuple[int, str]:
 
 
 def mul_candidate(candidate: str) -> int:
-    """ Returns X*Y from a candidate string: "X,Y)", where X and Y are each 1-3 digit numbers """
     first_number, rest_of_candidate = pop_number(candidate, ",")
     second_number, _ = pop_number(rest_of_candidate, ")")
     return first_number * second_number
 
 
 def sum_mul_candidates(candidates_list: list[str]) -> int:
-    """ Candidate string: "X,Y)", where X and Y are each 1-3 digit numbers """
     return sum([mul_candidate(candidate) for candidate in candidates_list])
 
 
@@ -106,7 +104,82 @@ def day_03_2(input_list: list[str]) -> int:
     return day_03_1([do_candidate.split("don't()")[0] for do_candidate in "".join(input_list).split("do()")])
 
 
+def count_xmas_in_line(line: str) -> int:
+    return len(line.split("XMAS")) - 1
+
+
+def count_xmas(matrix: list[str]) -> int:
+    return sum([count_xmas_in_line(line) + count_xmas_in_line(line[::-1]) for line in matrix])
+
+
+def transpose(matrix: list[str]) -> list[str]:
+    transposed = ['' for _ in range(len(matrix))]
+    for line in matrix:
+        for i, item in enumerate(line):
+            transposed[i] += item
+    return transposed
+
+
+def reverse_lines(matrix: list[str]) -> list[str]:
+    return [line[::-1] for line in matrix]
+
+
+def get_minor_diagonals(matrix: list[str]) -> list[str]:
+    diagonals = ['' for _ in range(2 * len(matrix) - 1)]
+    for i, line in enumerate(matrix):
+        for j, item in enumerate(line):
+            diagonals[i + j] += item
+    return diagonals
+
+
+def get_main_diagonals(matrix: list[str]) -> list[str]:
+    return get_minor_diagonals(reverse_lines(matrix))
+
+
+def get_matrix_from_minor_diagonals(diagonals: list[str]) -> list[str]:
+    N = len(diagonals) // 2 + 1
+    matrix = ['' for _ in range(N)]
+    for i, line in enumerate(diagonals):
+        shift = 0 if i < N else i % N + 1
+        for j, item in enumerate(line):
+            matrix[shift + j] += item
+    return matrix
+
+
+def get_matrix_from_main_diagonals(diagonals: list[str]) -> list[str]:
+    return reverse_lines(get_matrix_from_minor_diagonals(diagonals))
+
+
+def mark_line(line: str) -> str:
+    """ mark: MAS or SAM, encodes all characters to 0, and A in mark as 1 """
+
+    def mark(sam_or_mas: str) -> str:
+        return "010".join(['0' * len(shard) for shard in line.split(sam_or_mas)])
+
+    marked_line = ''
+    for sam, mas in zip(mark("SAM"), mark("MAS")):
+        marked_line += '1' if sam == '1' or mas == '1' else '0'
+    return marked_line
+
+
+def day_04_1(input_list: list[str]) -> int:
+    return (count_xmas(input_list)
+            + count_xmas(transpose(input_list))
+            + count_xmas(get_main_diagonals(input_list))
+            + count_xmas(get_minor_diagonals(input_list)))
+
+
+def day_04_2(input_list: list[str]) -> int:
+    main = get_matrix_from_main_diagonals([mark_line(d) for d in get_main_diagonals(input_list)])
+    minor = get_matrix_from_minor_diagonals([mark_line(d) for d in get_minor_diagonals(input_list)])
+    intersections = 0
+    for main_line, minor_line in zip(main, minor):
+        for x, y in zip(main_line, minor_line):
+            intersections += 1 if x == '1' and y == '1' else 0
+    return intersections
+
+
 if __name__ == '__main__':
-    lines = list_lines_from_file("input/Day03.txt")
-    day_function = day_03_2
+    lines = list_lines_from_file("input/Day04.txt")
+    day_function = day_04_2
     print(day_function(lines))

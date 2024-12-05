@@ -179,7 +179,63 @@ def day_04_2(input_list: list[str]) -> int:
     return intersections
 
 
+def extract_rules_and_updates(input_list: list[str]) -> tuple[dict[int, set[int]], list[list[int]]]:
+    rules = {}
+    updates = []
+    read_rules = True
+    for line in input_list:
+        if not line:
+            read_rules = False
+        elif read_rules:
+            l, r = line.split('|')
+            left, right = int(l), int(r)
+            rules_set = rules.get(left, set())
+            rules_set.add(right)
+            rules[left] = rules_set
+        else:
+            updates.append([int(x) for x in line.split(',')])
+    return rules, updates
+
+
+def check_update(rules: dict[int, set[int]], update: list[int]) -> int:
+    """ Returns the middle page number from a correctly-ordered update or 0 """
+    for i, page in enumerate(update):
+        page_rules = rules.get(page, set())
+        if page_rules.intersection(update[:i + 1]):
+            return 0
+    return update[len(update) // 2]
+
+
+def fix_update(rules: dict[int, set[int]], update: list[int]) -> int:
+    """ Returns the middle page number from a correctly-ordered update """
+    fixed_update = []
+    for page in update:
+        page_rules = rules.get(page, set())
+        if page_rules.intersection(fixed_update):
+            for i, anchor in enumerate(fixed_update):
+                if anchor in page_rules:
+                    fixed_update.insert(i, page)
+                    break
+        else:
+            fixed_update.append(page)
+    return fixed_update[len(update) // 2]
+
+
+def day_05_1(input_list: list[str]) -> int:
+    rules, updates = extract_rules_and_updates(input_list)
+    return sum([check_update(rules, update) for update in updates])
+
+
+def day_05_2(input_list: list[str]) -> int:
+    rules, updates = extract_rules_and_updates(input_list)
+    updates_to_fix = []
+    for update in updates:
+        if not check_update(rules, update):
+            updates_to_fix.append(update)
+    return sum([fix_update(rules, update) for update in updates_to_fix])
+
+
 if __name__ == '__main__':
-    lines = list_lines_from_file("input/Day04.txt")
-    day_function = day_04_2
+    lines = list_lines_from_file("input/Day05.txt")
+    day_function = day_05_2
     print(day_function(lines))

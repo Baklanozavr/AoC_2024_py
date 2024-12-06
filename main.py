@@ -235,7 +235,124 @@ def day_05_2(input_list: list[str]) -> int:
     return sum([fix_update(rules, update) for update in updates_to_fix])
 
 
+def find_guard_position(input_list: list[str]) -> tuple[int, int]:
+    for n, line in enumerate(input_list):
+        for i, symbol in enumerate(line):
+            if symbol == '^':
+                return n, i
+    return -1, -1
+
+
+def get_next_position(position: tuple[int, int], direction: str) -> tuple[int, int]:
+    n, i = position
+    if direction == 'UP':
+        return n - 1, i
+    elif direction == 'RIGHT':
+        return n, i + 1
+    elif direction == 'DOWN':
+        return n + 1, i
+    elif direction == 'LEFT':
+        return n, i - 1
+    else:
+        raise Exception("Unexpected direction: {}", direction)
+
+
+def get_next_direction(direction: str) -> str:
+    return {
+        'UP': 'RIGHT',
+        'RIGHT': 'DOWN',
+        'DOWN': 'LEFT',
+        'LEFT': 'UP'
+    }.get(direction)
+
+
+def get_cell(area: list[str], position: tuple[int, int]) -> str:
+    n, i = position
+    return area[n][i] if 0 <= n < len(area) and 0 <= i < len(area) else ''
+
+
+class GuardState:
+    def __init__(self, position: tuple[int, int], direction='UP'):
+        self.position = position
+        self.direction = direction
+
+    def __eq__(self, other):
+        if isinstance(other, GuardState):
+            return (self.position == other.position) and (self.direction == other.direction)
+        else:
+            return False
+
+    def __hash__(self):
+        return hash(self.position) + hash(self.direction)
+
+
+def move(state: GuardState, area: list[str]) -> GuardState:
+    next_position = get_next_position(state.position, state.direction)
+    next_cell = get_cell(area, next_position)
+    if not next_cell:
+        return GuardState((-1, -1))
+    if next_cell == '#' or next_cell == 'O':
+        return GuardState(state.position, get_next_direction(state.direction))
+    return GuardState(next_position, state.direction)
+
+
+def copy_area(area: list[str], obstacle_position: tuple[int, int]) -> list[str]:
+    copied_area = []
+    for n, line in enumerate(area):
+        new_line = ''
+        for i, symbol in enumerate(line):
+            new_line += 'O' if (n, i) == obstacle_position else symbol
+        copied_area.append(new_line)
+    return copied_area
+
+
+def collect_guard_path(area: list[str], initial_state: GuardState) -> tuple[list[GuardState], bool]:
+    state_history = []
+    states_set = set()
+    guard_state = initial_state
+    while guard_state.position[0] >= 0 and guard_state.position[1] >= 0:
+        state_history.append(guard_state)
+        states_set.add(guard_state)
+        guard_state = move(guard_state, area)
+        if guard_state in states_set:
+            return state_history, True
+    return state_history, False
+
+
+def is_area_with_cycle(area: list[str], initial_state: GuardState) -> bool:
+    guard_state = initial_state
+    while guard_state.position[0] >= 0 and guard_state.position[1] >= 0:
+        guard_state = move(guard_state, area)
+    return guard_state.position[0] == -10
+
+
+def day_06_1(input_list: list[str]) -> int:
+    guard_state = GuardState(find_guard_position(input_list))
+    path, _ = collect_guard_path(input_list, guard_state)
+    return len(set(state.position for state in path))
+
+
+def day_06_2(input_list: list[str]) -> int:
+    guard_state = GuardState(find_guard_position(input_list))
+    state_history, _ = collect_guard_path(input_list, guard_state)
+    checked_positions = set()
+    cycling_obstacles = set()
+    prev_state = state_history[0]
+    for state in state_history[1::]:  # ignore initial position
+        test_guard_state = prev_state
+        prev_state = state
+        if state.position in checked_positions:
+            continue
+        checked_positions.add(state.position)
+        test_area = copy_area(input_list, state.position)
+        _, has_cycle = collect_guard_path(test_area, test_guard_state)
+        if has_cycle:
+            cycling_obstacles.add(state.position)
+            print(state.position)
+    return len(cycling_obstacles)
+
+
 if __name__ == '__main__':
-    lines = list_lines_from_file("input/Day05.txt")
-    day_function = day_05_2
+    lines = list_lines_from_file("input/Day06.txt")
+    day_function = day_06_2
     print(day_function(lines))

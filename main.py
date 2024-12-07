@@ -352,7 +352,65 @@ def day_06_2(input_list: list[str]) -> int:
     return len(cycling_obstacles)
 
 
+def parse_test_data_07(line: str) -> tuple[int, list[int]]:
+    str_answer, str_list = tuple(line.split(':'))
+    return int(str_answer), [int(str_num.strip()) for str_num in str_list.strip().split(' ')]
+
+
+def solve_equation_01(test_value: int, numbers: list[int]) -> bool:
+    if not numbers:
+        raise Exception("Unexpected empty numbers")
+    test_number = numbers[-1]
+    sub_product = test_value - test_number
+    div_product = test_value // test_number if test_value % test_number == 0 else -1
+    if len(numbers) == 1:
+        return sub_product == 0 or div_product == 1
+    return (sub_product > 0 and solve_equation_01(sub_product, numbers[:-1])
+            or div_product > 0 and solve_equation_01(div_product, numbers[:-1]))
+
+
+def un_concat(test_value: int, test_number: int) -> int:
+    if test_value == test_number:
+        return 0
+    str_value, str_number = str(test_value), str(test_number)
+    if str_value.endswith(str_number):
+        return int(str_value.removesuffix(str_number))
+    return -1
+
+
+def solve_equation_02(test_value: int, numbers: list[int]) -> bool:
+    if not numbers:
+        raise Exception("Unexpected empty numbers")
+    test_number = numbers[-1]
+    split_product = un_concat(test_value, test_number)
+    sub_product = test_value - test_number
+    div_product = test_value // test_number if test_value % test_number == 0 else -1
+    if len(numbers) == 1:
+        return split_product == 0 or sub_product == 0 or div_product == 1
+    return (split_product > 0 and solve_equation_02(split_product, numbers[:-1])
+            or sub_product > 0 and solve_equation_02(sub_product, numbers[:-1])
+            or div_product > 0 and solve_equation_02(div_product, numbers[:-1]))
+
+
+def day_07_1(input_list: list[str]) -> int:
+    answer = 0
+    for line in input_list:
+        test_value, numbers = parse_test_data_07(line)
+        if solve_equation_01(test_value, numbers):
+            answer += test_value
+    return answer
+
+
+def day_07_2(input_list: list[str]) -> int:
+    answer = 0
+    for line in input_list:
+        test_value, numbers = parse_test_data_07(line)
+        if solve_equation_02(test_value, numbers):
+            answer += test_value
+    return answer
+
+
 if __name__ == '__main__':
-    lines = list_lines_from_file("input/Day06.txt")
-    day_function = day_06_2
+    lines = list_lines_from_file("input/Day07.txt")
+    day_function = day_07_2
     print(day_function(lines))

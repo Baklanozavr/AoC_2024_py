@@ -410,7 +410,81 @@ def day_07_2(input_list: list[str]) -> int:
     return answer
 
 
+def get_antennas_coordinates(input_list: list[str]) -> dict[str, set[tuple[int, int]]]:
+    """ key - antenna symbol, value - a set of coordinates """
+    antennas_map = {}
+    for n, line in enumerate(input_list):
+        for i, symbol in enumerate(line):
+            if symbol != '.':
+                coordinates = antennas_map.get(symbol, set())
+                coordinates.add((n, i))
+                antennas_map[symbol] = coordinates
+    return antennas_map
+
+
+def get_unique_pairs_set(coordinates: set[any]) -> set[tuple[any, any]]:
+    combinations = set()
+    for left in coordinates:
+        for right in coordinates:
+            if left != right and (right, left) not in combinations:
+                combinations.add((left, right))
+    return combinations
+
+
+def is_in_area(position: tuple[int, int], area_size: int) -> bool:
+    return 0 <= position[0] < area_size and 0 <= position[1] < area_size
+
+
+def shift_forward(vector: tuple[tuple[int, int], tuple[int, int]]) -> tuple[tuple[int, int], tuple[int, int]]:
+    a, b = vector
+    delta_x, delta_y = b[0] - a[0], b[1] - a[1]
+    return b, (b[0] + delta_x, b[1] + delta_y)
+
+
+def shift_backward(vector: tuple[tuple[int, int], tuple[int, int]]) -> tuple[tuple[int, int], tuple[int, int]]:
+    a, b = vector
+    delta_x, delta_y = b[0] - a[0], b[1] - a[1]
+    return (a[0] - delta_x, a[1] - delta_y), a
+
+
+def get_antinodes_1(antennas_pair: tuple[tuple[int, int], tuple[int, int]], area_size: int) -> set[tuple[int, int]]:
+    _, first_candidate = shift_forward(antennas_pair)
+    second_candidate, _ = shift_backward(antennas_pair)
+    return set(filter(lambda x_y: is_in_area(x_y, area_size), [first_candidate, second_candidate]))
+
+
+def get_antinodes_2(antennas_pair: tuple[tuple[int, int], tuple[int, int]], area_size: int) -> set[tuple[int, int]]:
+    antinodes = set()
+    first, second = antennas_pair
+    while is_in_area(second, area_size):
+        antinodes.add(second)
+        first, second = shift_forward((first, second))
+    first, second = antennas_pair
+    while is_in_area(first, area_size):
+        antinodes.add(first)
+        first, second = shift_backward((first, second))
+    return antinodes
+
+
+def day_08(input_list: list[str], get_antinodes) -> int:
+    area_size = len(input_list)
+    antennas_map = get_antennas_coordinates(input_list)
+    antinodes = set()
+    for coordinates in antennas_map.values():
+        for pair in get_unique_pairs_set(coordinates):
+            antinodes.update(get_antinodes(pair, area_size))
+    return len(antinodes)
+
+
+def day_08_1(input_list: list[str]) -> int:
+    return day_08(input_list, get_antinodes_1)
+
+
+def day_08_2(input_list: list[str]) -> int:
+    return day_08(input_list, get_antinodes_2)
+
+
 if __name__ == '__main__':
-    lines = list_lines_from_file("input/Day07.txt")
-    day_function = day_07_2
+    lines = list_lines_from_file("input/Day08.txt")
+    day_function = day_08_2
     print(day_function(lines))

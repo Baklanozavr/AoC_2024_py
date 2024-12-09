@@ -484,6 +484,10 @@ def day_08_2(input_list: list[str]) -> int:
     return day_08(input_list, get_antinodes_2)
 
 
+def block_checksum(block_size: int, block_index: int, block_position: int) -> int:
+    return (block_index // 2) * sum([block_position + i for i in range(block_size)])
+
+
 def day_09_01(input_list: list[str]) -> int:
     disk_line = [int(block) for block in input_list[0]]
     left, right = 0, len(disk_line) - 1
@@ -493,18 +497,15 @@ def day_09_01(input_list: list[str]) -> int:
         left_block = disk_line[left]
         if left % 2 == 0:
             file_block = left_block if left != right else (left_block - relocated_right_count)
-            file_id = left // 2
-            for _ in range(file_block):
-                checksum += file_id * position
-                position += 1
+            checksum += block_checksum(file_block, left, position)
+            position += file_block
             left += 1
         else:
             empty_block = left_block - used_empty_space
             right_block = disk_line[right] - relocated_right_count
-            file_id = right // 2
-            for _ in range(min(empty_block, right_block)):
-                checksum += file_id * position
-                position += 1
+            size_to_move = min(empty_block, right_block)
+            checksum += block_checksum(size_to_move, right, position)
+            position += size_to_move
             if right_block == empty_block:
                 used_empty_space, relocated_right_count = 0, 0
                 left += 1
@@ -535,35 +536,73 @@ def get_positions_shifts(disk_line: list[int]) -> list[int]:
     return positions_shifts
 
 
-def block_checksum(block_size: int, block_index: int, block_position: int) -> int:
-    block_id = block_index // 2
-    position, checksum = block_position, 0
-    for _ in range(block_size):
-        checksum += block_id * position
-        position += 1
-    return checksum
+def get_free_space_map(disk_line: list[int]) -> dict[int, list[int]]:
+    free_space_map = {}
+    for i, space_size in enumerate(disk_line):
+        if i % 2 != 0 and space_size > 0:
+            free_space_entry = free_space_map.get(space_size, [])
+            free_space_entry.append(i)
+            free_space_map[space_size] = free_space_entry
+    return free_space_map
+
+
+def insert_sorted(sorted_list: list[int], number: int):
+    """ sorted_list is a sorted list of increasing numbers """
+    if len(sorted_list) == 0 or sorted_list[-1] < number:
+        sorted_list.append(number)
+        return
+    if sorted_list[0] > number:
+        sorted_list.insert(0, number)
+        return
+    left_search_index, right_search_index = 0, len(sorted_list) - 1
+    while True:
+        if right_search_index - left_search_index == 0:
+            break
+        delta = max((right_search_index - left_search_index) // 2, 1)
+        if sorted_list[left_search_index] < number < sorted_list[right_search_index]:
+            right_search_index -= delta
+        elif sorted_list[right_search_index] < number:
+            left_search_index = right_search_index
+            right_search_index = min(right_search_index + delta, len(sorted_list) - 1)
+        elif sorted_list[left_search_index] > number:
+            right_search_index = left_search_index
+            left_search_index = max(left_search_index - delta, 0)
+        else:
+            raise Exception("{} {}", left_search_index, right_search_index)
+    sorted_list.insert(left_search_index + 1, number)
+
+
+def get_free_list(free_space_map: dict[int, list[int]], block_size: int) -> tuple[int, list[int]]:
+    """ :return used_key, list[index] """
+    candidates = {}
+    for empty_size, i_list in free_space_map.items():
+        if empty_size >= block_size and i_list:
+            candidates[i_list[0]] = (empty_size, i_list)
+    if not candidates:
+        return -1, []
+    return candidates[min(candidates.keys())]
 
 
 def day_09_02(input_list: list[str]) -> int:
     disk_line = [int(block) for block in input_list[0]]
     moved_blocks = [False for _ in range(len(disk_line))]
-    free_space = [0 if (i % 2) == 0 else block for i, block in enumerate(disk_line)]
+    free_space_map = get_free_space_map(disk_line)
     positions_shifts = get_positions_shifts(disk_line)
-    right = len(disk_line) - 1
     checksum = 0
-    while right > 0:
-        block_to_move = disk_line[right]
-        left = 1
-        while left < right:
-            if free_space[left] >= block_to_move:
-                checksum += block_checksum(block_to_move, right, positions_shifts[left])
-                moved_blocks[right] = True
-                free_space[left] -= block_to_move
-                positions_shifts[left] += block_to_move
-                break
-            else:
-                left += 2
-        right -= 2
+    for inverted_index, block_to_move in enumerate(disk_line[:0:-2]):
+        right = len(disk_line) - 1 - (2 * inverted_index)
+        free_size, free_list = get_free_list(free_space_map, block_to_move)
+        if not free_list:
+            continue
+        free_index = free_list.pop(0)
+        if free_index > right:
+            continue
+        free_size_left = free_size - block_to_move
+        if free_size_left > 0:
+            insert_sorted(free_space_map[free_size_left], free_index)
+        moved_blocks[right] = True
+        checksum += block_checksum(block_to_move, right, positions_shifts[free_index])
+        positions_shifts[free_index] += block_to_move
     for i, is_moved in enumerate(moved_blocks):
         if not is_moved and (i % 2 == 0):
             checksum += block_checksum(disk_line[i], i, positions_shifts[i])

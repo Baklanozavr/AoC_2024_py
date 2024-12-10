@@ -609,7 +609,75 @@ def day_09_02(input_list: list[str]) -> int:
     return checksum
 
 
+class Tile1:
+    def __init__(self, height: int, position: tuple[int, int]):
+        self.height = height
+        self.reachable_nines = set()
+        if height == 9:
+            self.reachable_nines.add(position)
+
+
+class Tile2:
+    def __init__(self, height: int):
+        self.height = height
+        self.reachable_nines = 1 if height == 9 else 0
+
+
+def get_hiking_map_1(input_list: list[str]) -> list[list[Tile1]]:
+    return [[Tile1(int(h_str), (n, i)) for i, h_str in enumerate(line)] for n, line in enumerate(input_list)]
+
+
+def get_hiking_map_2(input_list: list[str]) -> list[list[Tile2]]:
+    return [[Tile2(int(h_str)) for h_str in line] for line in input_list]
+
+
+def count_trailheads_1(hiking_map: list[list[Tile1]]) -> int:
+    return sum([sum([len(tile.reachable_nines) if tile.height == 0 else 0 for tile in tile_line])
+                for tile_line in hiking_map])
+
+
+def count_trailheads_2(hiking_map: list[list[Tile2]]) -> int:
+    return sum([sum([tile.reachable_nines if tile.height == 0 else 0 for tile in tile_line])
+                for tile_line in hiking_map])
+
+
+def fill_reachable_nines_on_slope_1(slope_height: int, hiking_map: list[list[Tile1]]):
+    for n, tile_line in enumerate(hiking_map):
+        for i, tile in enumerate(tile_line):
+            if tile.height == slope_height:
+                for neighbor_position in [(n - 1, i), (n + 1, i), (n, i - 1), (n, i + 1)]:
+                    if is_in_area(neighbor_position, len(hiking_map)):
+                        neighbor = hiking_map[neighbor_position[0]][neighbor_position[1]]
+                        if neighbor.height - tile.height == 1:
+                            tile.reachable_nines.update(neighbor.reachable_nines)
+
+
+def fill_reachable_nines_on_slope_2(slope_height: int, hiking_map: list[list[Tile2]]):
+    for n, tile_line in enumerate(hiking_map):
+        for i, tile in enumerate(tile_line):
+            if tile.height == slope_height:
+                for neighbor_position in [(n - 1, i), (n + 1, i), (n, i - 1), (n, i + 1)]:
+                    if is_in_area(neighbor_position, len(hiking_map)):
+                        neighbor = hiking_map[neighbor_position[0]][neighbor_position[1]]
+                        if neighbor.height - tile.height == 1:
+                            tile.reachable_nines += neighbor.reachable_nines
+
+
+def day_10_01(input_list: list[str]) -> int:
+    hiking_map = get_hiking_map_1(input_list)
+    for slope_height in range(9)[::-1]:
+        fill_reachable_nines_on_slope_1(slope_height, hiking_map)
+    return count_trailheads_1(hiking_map)
+
+
+def day_10_02(input_list: list[str]) -> int:
+    hiking_map = get_hiking_map_2(input_list)
+    for slope_height in range(9)[::-1]:
+        fill_reachable_nines_on_slope_2(slope_height, hiking_map)
+    return count_trailheads_2(hiking_map)
+
+
 if __name__ == '__main__':
-    lines = list_lines_from_file("input/Day09.txt")
-    day_function = day_09_02
+    lines = list_lines_from_file("input/Day10.txt")
+    day_function = day_10_02
     print(day_function(lines))

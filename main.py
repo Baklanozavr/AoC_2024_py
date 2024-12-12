@@ -676,8 +676,59 @@ def day_10_02(input_list: list[str]) -> int:
         fill_reachable_nines_on_slope_2(slope_height, hiking_map)
     return count_trailheads_2(hiking_map)
 
+MAX_STONE_SIZE = 7
+
+def change_stone(stone: int) -> list[int]:
+    if stone == 0:
+        return [1]
+    digits = str(stone)
+    number_of_digits = len(digits)
+    global MAX_STONE_SIZE
+    if number_of_digits > MAX_STONE_SIZE:
+        MAX_STONE_SIZE = number_of_digits
+        print("digits:", number_of_digits ,digits)
+    if number_of_digits % 2 == 0:
+        first_part, second_part = digits[:number_of_digits // 2], digits[number_of_digits // 2:]
+        return [int(first_part), int(second_part)]
+    return [stone * 2024]
+
+
+def day_11_01(input_list: list[str]) -> int:
+    FRAME_LIMIT = 25
+    stones_by_frames = dict([(i, []) for i in range(FRAME_LIMIT + 1)])
+    stones_by_frames[0] = to_list_of_ints(input_list[0])
+    stones_count, frame = 0, 0
+    while frame >= 0:
+        stones = stones_by_frames[frame]
+        if not stones:
+            frame -= 1
+        elif frame == FRAME_LIMIT:
+            stones_count += len(stones)
+            stones_by_frames[frame] = []
+            frame -= 1
+        else:
+            frame += 1
+            stones_by_frames[frame] += change_stone(stones.pop())
+    return stones_count
+
+
+def count_stones(stone: int, frames: int, stone_frames_cache: dict[tuple[int, int], int]) -> int:
+    if frames == 0:
+        return 1
+    cashed_count = stone_frames_cache.get((stone, frames))
+    if cashed_count is not None:
+        return cashed_count
+    return sum([count_stones(new_stone, frames - 1, stone_frames_cache) for new_stone in change_stone(stone)])
+
+
+def day_11_02(input_list: list[str]) -> int:
+    stone_frames_cache = {}
+
+
+    return 0
+
 
 if __name__ == '__main__':
-    lines = list_lines_from_file("input/Day10.txt")
-    day_function = day_10_02
+    lines = list_lines_from_file("input/Day11.txt")
+    day_function = day_11_01
     print(day_function(lines))

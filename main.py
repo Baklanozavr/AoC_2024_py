@@ -676,7 +676,9 @@ def day_10_02(input_list: list[str]) -> int:
         fill_reachable_nines_on_slope_2(slope_height, hiking_map)
     return count_trailheads_2(hiking_map)
 
+
 MAX_STONE_SIZE = 7
+
 
 def change_stone(stone: int) -> list[int]:
     if stone == 0:
@@ -686,7 +688,7 @@ def change_stone(stone: int) -> list[int]:
     global MAX_STONE_SIZE
     if number_of_digits > MAX_STONE_SIZE:
         MAX_STONE_SIZE = number_of_digits
-        print("digits:", number_of_digits ,digits)
+        print("digits:", number_of_digits, digits)
     if number_of_digits % 2 == 0:
         first_part, second_part = digits[:number_of_digits // 2], digits[number_of_digits // 2:]
         return [int(first_part), int(second_part)]
@@ -724,11 +726,95 @@ def count_stones(stone: int, frames: int, stone_frames_cache: dict[tuple[int, in
 def day_11_02(input_list: list[str]) -> int:
     stone_frames_cache = {}
 
-
     return 0
 
 
+class Region:
+    def __init__(self, plant: str):
+        self.plant = plant
+        self.region_id = -1  # -1 means no id
+        self.perimeter = 4
+        self.sides: set[tuple[str, int]] = set()
+
+
+def calculate_fence_price_1(garden: list[list[Region]]) -> int:
+    square_and_perimeter_by_region_id = {}
+    for line in garden:
+        for region in line:
+            square, perimeter = square_and_perimeter_by_region_id.get(region.region_id, (0, 0))
+            square_and_perimeter_by_region_id[region.region_id] = (square + 1, perimeter + region.perimeter)
+    return sum([square * perimeter for square, perimeter in square_and_perimeter_by_region_id.values()])
+
+
+def calculate_fence_price_2(garden: list[list[Region]]) -> int:
+    square_and_sides_by_region_id = {}
+    for line in garden:
+        for region in line:
+            square, sides = square_and_sides_by_region_id.get(region.region_id, (0, set()))
+            sides.update(region.sides)
+            square_and_sides_by_region_id[region.region_id] = (square + 1, sides)
+    return sum([square * len(edges) for square, edges in square_and_sides_by_region_id.values()])
+
+
+def visit_1(region_id: int, position: tuple[int, int], garden: list[list[Region]]):
+    n, i = position
+    region = garden[n][i]
+    region.region_id = region_id
+    for neighbor_position in [(n - 1, i), (n + 1, i), (n, i - 1), (n, i + 1)]:
+        if is_in_area(neighbor_position, len(garden)):
+            neighbor = garden[neighbor_position[0]][neighbor_position[1]]
+            if neighbor.plant == region.plant:
+                region.perimeter -= 1
+                if neighbor.region_id == -1:
+                    visit_1(region_id, neighbor_position, garden)
+
+
+def get_side(region_position: tuple[int, int], neighbor_position: tuple[int, int]) -> tuple[str, int]:
+    if neighbor_position[0] - region_position[0] != 0:
+        return 'H', neighbor_position[0]
+    if neighbor_position[1] - region_position[1] != 0:
+        return 'V', neighbor_position[1]
+    raise Exception("Can not return RegionEdge")
+
+
+def visit_2(region_id: int, position: tuple[int, int], garden: list[list[Region]]):
+    n, i = position
+    region = garden[n][i]
+    region.region_id = region_id
+    for neighbor_position in [(n - 1, i), (n + 1, i), (n, i - 1), (n, i + 1)]:
+        if is_in_area(neighbor_position, len(garden)):
+            neighbor = garden[neighbor_position[0]][neighbor_position[1]]
+            if neighbor.plant != region.plant:
+                region.sides.add(get_side(position, neighbor_position))
+            elif neighbor.region_id == -1:
+                visit_2(region_id, neighbor_position, garden)
+        else:
+            region.sides.add(get_side(position, neighbor_position))
+
+
+def day_12_01(input_list: list[str]) -> int:
+    garden = [[Region(plant) for plant in line] for line in input_list]
+    region_counter = 0
+    for n in range(len(garden)):
+        for i in range(len(garden)):
+            if garden[n][i].region_id == -1:
+                visit_1(region_counter, (n, i), garden)
+                region_counter += 1
+    return calculate_fence_price_1(garden)
+
+
+def day_12_02(input_list: list[str]) -> int:
+    garden = [[Region(plant) for plant in line] for line in input_list]
+    region_counter = 0
+    for n in range(len(garden)):
+        for i in range(len(garden)):
+            if garden[n][i].region_id == -1:
+                visit_2(region_counter, (n, i), garden)
+                region_counter += 1
+    return calculate_fence_price_2(garden)
+
+
 if __name__ == '__main__':
-    lines = list_lines_from_file("input/Day11.txt")
-    day_function = day_11_01
+    lines = list_lines_from_file("input/Day12_test.txt")
+    day_function = day_12_02
     print(day_function(lines))

@@ -734,7 +734,7 @@ class Region:
         self.plant = plant
         self.region_id = -1  # -1 means no id
         self.perimeter = 4
-        self.sides: set[tuple[str, int]] = set()
+        self.vertices = 0
 
 
 def calculate_fence_price_1(garden: list[list[Region]]) -> int:
@@ -747,13 +747,12 @@ def calculate_fence_price_1(garden: list[list[Region]]) -> int:
 
 
 def calculate_fence_price_2(garden: list[list[Region]]) -> int:
-    square_and_sides_by_region_id = {}
+    square_and_vertices_by_region_id = {}
     for line in garden:
         for region in line:
-            square, sides = square_and_sides_by_region_id.get(region.region_id, (0, set()))
-            sides.update(region.sides)
-            square_and_sides_by_region_id[region.region_id] = (square + 1, sides)
-    return sum([square * len(edges) for square, edges in square_and_sides_by_region_id.values()])
+            square, vertices = square_and_vertices_by_region_id.get(region.region_id, (0, 0))
+            square_and_vertices_by_region_id[region.region_id] = (square + 1, vertices + region.vertices)
+    return sum([square * vertices for square, vertices in square_and_vertices_by_region_id.values()])
 
 
 def visit_1(region_id: int, position: tuple[int, int], garden: list[list[Region]]):
@@ -769,27 +768,28 @@ def visit_1(region_id: int, position: tuple[int, int], garden: list[list[Region]
                     visit_1(region_id, neighbor_position, garden)
 
 
-def get_side(region_position: tuple[int, int], neighbor_position: tuple[int, int]) -> tuple[str, int]:
-    if neighbor_position[0] - region_position[0] != 0:
-        return 'H', neighbor_position[0]
-    if neighbor_position[1] - region_position[1] != 0:
-        return 'V', neighbor_position[1]
-    raise Exception("Can not return RegionEdge")
-
-
-def visit_2(region_id: int, position: tuple[int, int], garden: list[list[Region]]):
+def visit_2(position: tuple[int, int], garden: list[list[Region]]):
     n, i = position
     region = garden[n][i]
-    region.region_id = region_id
-    for neighbor_position in [(n - 1, i), (n + 1, i), (n, i - 1), (n, i + 1)]:
-        if is_in_area(neighbor_position, len(garden)):
-            neighbor = garden[neighbor_position[0]][neighbor_position[1]]
-            if neighbor.plant != region.plant:
-                region.sides.add(get_side(position, neighbor_position))
-            elif neighbor.region_id == -1:
-                visit_2(region_id, neighbor_position, garden)
-        else:
-            region.sides.add(get_side(position, neighbor_position))
+
+    def from_same_region(n_pos: int, i_pos: int) -> bool:
+        return is_in_area((n_pos, i_pos), len(garden)) and garden[n_pos][i_pos].region_id == region.region_id
+
+    for neighbor_pair_shift in [
+        ((0, -1), (-1, 0)),  # LEFT + UP
+        ((-1, 0), (0, 1)),  # UP + RIGHT
+        ((0, 1), (1, 0)),  # RIGHT + DOWN
+        ((1, 0), (0, -1))  # DOWN + LEFT
+    ]:
+        shift_1, shift_2 = neighbor_pair_shift
+        d_n_1, d_i_1 = shift_1
+        d_n_2, d_i_2 = shift_2
+        diagonal_position = (n + d_n_1 + d_n_2, i + d_i_1 + d_i_2)
+        if (not from_same_region(n + d_n_1, i + d_i_1) and not from_same_region(n + d_n_2, i + d_i_2)
+                or from_same_region(n + d_n_1, i + d_i_1)
+                and from_same_region(n + d_n_2, i + d_i_2)
+                and not from_same_region(*diagonal_position)):
+            region.vertices += 1
 
 
 def day_12_01(input_list: list[str]) -> int:
@@ -809,8 +809,11 @@ def day_12_02(input_list: list[str]) -> int:
     for n in range(len(garden)):
         for i in range(len(garden)):
             if garden[n][i].region_id == -1:
-                visit_2(region_counter, (n, i), garden)
+                visit_1(region_counter, (n, i), garden)
                 region_counter += 1
+    for n in range(len(garden)):
+        for i in range(len(garden)):
+            visit_2((n, i), garden)
     return calculate_fence_price_2(garden)
 
 
@@ -863,6 +866,6 @@ def day_14_01(input_list: list[str]) -> int:
 
 
 if __name__ == '__main__':
-    lines = list_lines_from_file("input/Day14.txt")
-    day_function = day_14_01
+    lines = list_lines_from_file("input/Day12.txt")
+    day_function = day_12_02
     print(day_function(lines))

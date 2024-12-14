@@ -865,7 +865,72 @@ def day_14_01(input_list: list[str]) -> int:
     return safety_factor(robots)
 
 
+A_COST = 3
+B_COST = 1
+
+
+def get_prize_cost(button_a: tuple[int, int], button_b: tuple[int, int], prize: tuple[int, int]) -> int:
+    a_dx, a_dy = button_a
+    b_dx, b_dy = button_b
+    p_x, p_y = prize
+    dividend = a_dx * p_y - a_dy * p_x
+    divisor = a_dx * b_dy - a_dy * b_dx
+    if dividend % divisor != 0:
+        return 0
+    N_b = dividend // divisor
+    if N_b < 0:
+        return 0
+    if (p_x - N_b * b_dx) % a_dx != 0:
+        return 0
+    N_a = (p_x - N_b * b_dx) // a_dx
+    if N_a < 0:
+        return 0
+    return A_COST * N_a + B_COST * N_b
+
+
+def parse_button(line: str) -> tuple[int, int]:
+    tuple_str = line.split(', ')
+    x = tuple_str[0].split('+')[1]
+    y = tuple_str[1].split('+')[1]
+    return int(x), int(y)
+
+
+def parse_prize(line: str) -> tuple[int, int]:
+    tuple_str = line.split(', ')
+    x = tuple_str[0].split('=')[1]
+    y = tuple_str[1].split('=')[1]
+    return int(x), int(y)
+
+
+def get_tokens_count(input_list: list[str], prize_offset: int) -> int:
+    tokens_count = 0
+    button_a, button_b = (0, 0), (0, 0)
+    state = 'A'  # B and P
+    for line in input_list:
+        if not line:
+            continue
+        elif state == 'A':
+            button_a = parse_button(line)
+            state = 'B'
+        elif state == 'B':
+            button_b = parse_button(line)
+            state = 'P'
+        elif state == 'P':
+            prize_x, prize_y = parse_prize(line)
+            tokens_count += get_prize_cost(button_a, button_b, (prize_x + prize_offset, prize_y + prize_offset))
+            state = 'A'
+    return tokens_count
+
+
+def day_13_01(input_list: list[str]) -> int:
+    return get_tokens_count(input_list, 0)
+
+
+def day_13_02(input_list: list[str]) -> int:
+    return get_tokens_count(input_list, 10000000000000)
+
+
 if __name__ == '__main__':
-    lines = list_lines_from_file("input/Day12.txt")
-    day_function = day_12_02
+    lines = list_lines_from_file("input/Day13.txt")
+    day_function = day_13_02
     print(day_function(lines))

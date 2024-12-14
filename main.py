@@ -814,7 +814,55 @@ def day_12_02(input_list: list[str]) -> int:
     return calculate_fence_price_2(garden)
 
 
+class Robot:
+    def __init__(self, position: tuple[int, int], velocity: tuple[int, int]):
+        self.position = position
+        self.velocity = velocity
+
+
+def collect_robots(input_list: list[str]) -> list[Robot]:
+    def extract_tuple(eq_str: str) -> tuple[int, int]:
+        _, tuple_str = eq_str.split('=')
+        x, y = tuple_str.split(',')
+        return int(y), int(x)  # I want line number as the first element
+
+    return [Robot(*map(extract_tuple, line.split(' '))) for line in input_list]
+
+
+# SPACE_WIDTH, SPACE_TALL = 11, 7
+SPACE_WIDTH, SPACE_TALL = 101, 103
+
+
+def move_robot(robot: Robot, seconds: int):
+    n, i = robot.position
+    d_n, d_i = robot.velocity
+    robot.position = ((n + d_n * seconds) % SPACE_TALL, (i + d_i * seconds) % SPACE_WIDTH)
+
+
+def safety_factor(robots: list[Robot]) -> int:
+    top_L, top_R, bottom_L, bottom_R = 0, 0, 0, 0
+    middle_n, middle_i = SPACE_TALL // 2, SPACE_WIDTH // 2
+    for robot in robots:
+        n, i = robot.position
+        if n < middle_n and i < middle_i:
+            top_L += 1
+        elif n < middle_n and i > middle_i:
+            top_R += 1
+        elif n > middle_n and i < middle_i:
+            bottom_L += 1
+        elif n > middle_n and i > middle_i:
+            bottom_R += 1
+    return top_L * top_R * bottom_L * bottom_R
+
+
+def day_14_01(input_list: list[str]) -> int:
+    robots = collect_robots(input_list)
+    for robot in robots:
+        move_robot(robot, 100)
+    return safety_factor(robots)
+
+
 if __name__ == '__main__':
-    lines = list_lines_from_file("input/Day12_test.txt")
-    day_function = day_12_02
+    lines = list_lines_from_file("input/Day14.txt")
+    day_function = day_14_01
     print(day_function(lines))

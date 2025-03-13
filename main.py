@@ -235,10 +235,10 @@ def day_05_2(input_list: list[str]) -> int:
     return sum([fix_update(rules, update) for update in updates_to_fix])
 
 
-def find_guard_position(input_list: list[str]) -> tuple[int, int]:
+def find_symbol_position(symbol: str, input_list: list[str]) -> tuple[int, int]:
     for n, line in enumerate(input_list):
-        for i, symbol in enumerate(line):
-            if symbol == '^':
+        for i, character in enumerate(line):
+            if character == symbol:
                 return n, i
     return -1, -1
 
@@ -286,7 +286,7 @@ class GuardState:
         return hash(self.position) + hash(self.direction)
 
 
-def move(state: GuardState, area: list[str]) -> GuardState:
+def move_guard(state: GuardState, area: list[str]) -> GuardState:
     next_position = get_next_position(state.position, state.direction)
     next_cell = get_cell(area, next_position)
     if not next_cell:
@@ -313,7 +313,7 @@ def collect_guard_path(area: list[str], initial_state: GuardState) -> tuple[list
     while guard_state.position[0] >= 0 and guard_state.position[1] >= 0:
         state_history.append(guard_state)
         states_set.add(guard_state)
-        guard_state = move(guard_state, area)
+        guard_state = move_guard(guard_state, area)
         if guard_state in states_set:
             return state_history, True
     return state_history, False
@@ -322,18 +322,18 @@ def collect_guard_path(area: list[str], initial_state: GuardState) -> tuple[list
 def is_area_with_cycle(area: list[str], initial_state: GuardState) -> bool:
     guard_state = initial_state
     while guard_state.position[0] >= 0 and guard_state.position[1] >= 0:
-        guard_state = move(guard_state, area)
+        guard_state = move_guard(guard_state, area)
     return guard_state.position[0] == -10
 
 
 def day_06_1(input_list: list[str]) -> int:
-    guard_state = GuardState(find_guard_position(input_list))
+    guard_state = GuardState(find_symbol_position('^', input_list))
     path, _ = collect_guard_path(input_list, guard_state)
     return len(set(state.position for state in path))
 
 
 def day_06_2(input_list: list[str]) -> int:
-    guard_state = GuardState(find_guard_position(input_list))
+    guard_state = GuardState(find_symbol_position('^', input_list))
     state_history, _ = collect_guard_path(input_list, guard_state)
     checked_positions = set()
     cycling_obstacles = set()
@@ -930,7 +930,54 @@ def day_13_02(input_list: list[str]) -> int:
     return get_tokens_count(input_list, 10000000000000)
 
 
+def get_move_position(move: str, position: tuple[int, int]) -> tuple[int, int]:
+    n, i = position
+    if move == '<':
+        return n, i - 1
+    if move == '^':
+        return n - 1, i
+    if move == '>':
+        return n, i + 1
+    if move == 'v':
+        return n + 1, i
+    raise Exception('Unexpected move')
+
+
+def get_free_position(move: str, start_position: tuple[int, int], warehouse: list[list[str]]) -> tuple[bool, tuple[int, int]]:
+    target = warehouse[start_position[0]][start_position[1]]
+    if target == '#':
+        return False, (-1, -1)
+    if target == 'O':
+        return get_free_position(move, get_move_position(move, start_position), warehouse)
+    return True, start_position
+
+
+def calculate_sum_of_goods_positions(warehouse: list[list[str]]) -> int:
+    sum_of_goods_positions = 0
+    for n, line in enumerate(warehouse):
+        for i, box in enumerate(line):
+            if box == 'O':
+                sum_of_goods_positions += 100 * n + i
+    return sum_of_goods_positions
+
+
+def day_15_01(input_list: list[str]) -> int:
+    warehouse_size = len(input_list[0])
+    warehouse = [list(line) for line in input_list[:warehouse_size:]]
+    moves = ''.join(input_list[warehouse_size::])
+    robot_position = find_symbol_position('@', input_list[:warehouse_size:])
+    for move in moves:
+        next_position = get_move_position(move, robot_position)
+        is_free, free_position = get_free_position(move, next_position, warehouse)
+        if is_free:
+            robot_position = next_position
+            if next_position != free_position:
+                warehouse[next_position[0]][next_position[1]] = '.'
+                warehouse[free_position[0]][free_position[1]] = 'O'
+    return calculate_sum_of_goods_positions(warehouse)
+
+
 if __name__ == '__main__':
-    lines = list_lines_from_file("input/Day13.txt")
-    day_function = day_13_02
+    lines = list_lines_from_file("input/Day15.txt")
+    day_function = day_15_01
     print(day_function(lines))
